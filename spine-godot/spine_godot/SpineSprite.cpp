@@ -894,6 +894,14 @@ void SpineSprite::update_meshes(Ref<SpineSkeleton> skeleton_ref) {
 			auto &sequence = region->getSequence();
 			int sequenceIndex = sequence.resolveIndex(slot->getAppliedPose());
 
+			// allowMissingRegions: if the atlas region failed to resolve (e.g. its
+			// garment atlas is not loaded), sequence.getRegion() is null. Skip the
+			// attachment instead of dereferencing null and crashing the whole scene.
+			if (!sequence.getRegion(sequenceIndex)) {
+				skeleton_clipper->clipEnd(*slot);
+				continue;
+			}
+
 			vertices->setSize(8, 0);
 			region->computeWorldVertices(*slot, sequence.getOffsets(sequenceIndex).buffer(), vertices->buffer(), 0);
 			renderer_object = (SpineRendererObject *) ((spine::AtlasRegion *) sequence.getRegion(sequenceIndex))->getPage()->texture;
@@ -909,6 +917,12 @@ void SpineSprite::update_meshes(Ref<SpineSkeleton> skeleton_ref) {
 			auto mesh = (spine::MeshAttachment *) attachment;
 			auto &sequence = mesh->getSequence();
 			int sequenceIndex = sequence.resolveIndex(slot->getAppliedPose());
+
+			// allowMissingRegions: skip meshes whose atlas region did not resolve.
+			if (!sequence.getRegion(sequenceIndex)) {
+				skeleton_clipper->clipEnd(*slot);
+				continue;
+			}
 
 			vertices->setSize(mesh->getWorldVerticesLength(), 0);
 			mesh->computeWorldVertices(*skeleton, *slot, 0, mesh->getWorldVerticesLength(), vertices->buffer(), 0, 2);
@@ -1082,6 +1096,8 @@ void SpineSprite::draw() {
 			auto region = (spine::RegionAttachment *) attachment;
 			auto &sequence = region->getSequence();
 			int sequenceIndex = sequence.resolveIndex(slot->getAppliedPose());
+			// allowMissingRegions: skip debug outline for unresolved regions.
+			if (!sequence.getRegion(sequenceIndex)) continue;
 			auto vertices = &statics.scratch_vertices;
 			vertices->setSize(8, 0);
 			region->computeWorldVertices(*slot, sequence.getOffsets(sequenceIndex).buffer(), vertices->buffer(), 0);
